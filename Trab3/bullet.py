@@ -1,61 +1,21 @@
 import pygame
-from abc import ABC, abstractmethod
-from util import colored_sprite, EventHandler
+from abc import ABC,abstractmethod
+from util import colored_sprite,EventHandler
 
-
-import math
-
-def rotate(pos, angle, axis = (0,0)):
-    angle = math.radians(angle)
-    x, y = pos
-    ax, ay = axis
-
-    # Translate so axis is the origin
-    x -= ax
-    y -= ay
-
-    # Rotate
-    cos_a = math.cos(angle)
-    sin_a = math.sin(angle)
-
-    rx = x * cos_a - y * sin_a
-    ry = x * sin_a + y * cos_a
-
-    # Translate back
-    return rx + ax, ry + ay
-
-class Bullet (ABC):
-
-    def __init__(self, pos, angle = 0, radius = 16, life_time = None):
-        self.pos = pos
-        self.origin = pygame.Vector2(pos)
-        self.life_time = life_time
-        self.angle = angle
-        self.elapsed = 0
-        self.radius = radius
-
-        self.sprite = colored_sprite ((255, 0, 0), (self.radius*2, self.radius*2))
-
-    def update(self, dt):
-
-        self.elapsed += dt
-        if self.life_time and self.elapsed >= self.life_time:
-                self.destroy()       
-
-        self.pos = rotate(self.move(), self.angle)+self.origin
-
-    def draw(self, screen):
-        screen.blit(self.sprite, self.pos)
-
+class Bullet(ABC):
+    def __init__(self,pos,direction,speed=650,life_time=1.5,radius=5):
+        self.pos=pygame.Vector2(pos); self.direction=pygame.Vector2(direction).normalize()
+        self.speed=speed; self.life_time=life_time; self.elapsed=0; self.radius=radius; self.destroyed=False
+        self.sprite=colored_sprite((255,240,70),(radius*2,radius*2))
+    def update(self,dt):
+        if self.destroyed:return
+        self.elapsed+=dt; self.pos+=self.direction*self.speed*dt
+        if self.elapsed>=self.life_time or not (0<=self.pos.x<=800 and 0<=self.pos.y<=600):self.destroy()
+    def draw(self,screen): screen.blit(self.sprite,(int(self.pos.x-self.radius),int(self.pos.y-self.radius)))
+    def destroy(self):
+        if not self.destroyed:self.destroyed=True; EventHandler().notify("DestroyObj",self)
     @abstractmethod
-    def move(self):
-        pass
+    def move(self):pass
 
-    def destroy(self): # pede para deletar
-        EventHandler().notify("DestroyObj", self) # avisa o mundo que saiu da tela
-
-class sinBullet (Bullet):
-    # exemplo, façam algo mais rebuscado
-
-    def move(self):
-        return pygame.Vector2(self.elapsed, math.sin(self.elapsed/50)*50) 
+class PlayerBullet(Bullet):
+    def move(self):return self.direction*self.speed
